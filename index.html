@@ -98,8 +98,9 @@
   td.deadline { font-size: .88rem; font-weight: 600; color: #bbb; white-space: nowrap; vertical-align: middle; }
 
   .sbadge { display: inline-block; border-radius: 20px; padding: 3px 11px; font-size: .76rem; font-weight: 700; white-space: nowrap; }
-  .s-bald     { background: #4a3010; color: #f0a030; border: 1px solid #7a5020; }
-  .s-später   { background: #10304a; color: #4ab0f0; border: 1px solid #20607a; }
+  .s-bald     { background: #4a1010; color: #f06060; border: 1px solid #7a2020; }
+  .s-später   { background: #3a3000; color: #e0c030; border: 1px solid #6a5a00; }
+  .s-sehr-spät { background: #1a4a1a; color: #6dcc6d; border: 1px solid #2d7a2d; }
   .s-offen    { background: #2e2e2e; color: #999;    border: 1px solid #444; }
 
   td.chk { width: 40px; text-align: center; vertical-align: middle; }
@@ -136,7 +137,31 @@
   }
   .del-row-btn:hover { border-color: #f06060; color: #f06060; background: #2a0a0a; }
 
-  /* Bold bar */
+  /* Sort dropdown */
+  .sort-wrap { position: relative; display: inline-block; }
+  .btn-sort {
+    display: flex; align-items: center; gap: 6px;
+    background: #252525; color: #bbb; border: 1px solid #3a3a3a;
+    border-radius: 9px; padding: 7px 14px; font-size: .85rem; font-weight: 500;
+    cursor: pointer; transition: all .18s;
+  }
+  .btn-sort:hover { background: #2e2e2e; border-color: #555; color: #eee; }
+  .btn-sort .arrow { font-size: .7rem; transition: transform .2s; }
+  .btn-sort.open .arrow { transform: rotate(180deg); }
+  .sort-menu {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    background: #252525; border: 1px solid #3a3a3a; border-radius: 10px;
+    min-width: 210px; z-index: 500; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .sort-menu.open { display: block; }
+  .sort-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 16px; font-size: .84rem; color: #bbb; cursor: pointer; transition: background .12s;
+  }
+  .sort-option:hover { background: #2e2e2e; color: #eee; }
+  .sort-option.active { color: #4ab0f0; background: #0d1a2e; }
+  .sort-option .sort-icon { font-size: .9rem; width: 18px; text-align: center; }
   #boldBar {
     position: fixed; z-index: 9999; background: #2a2a2a; border: 1px solid #444;
     border-radius: 8px; padding: 4px 6px; display: none; align-items: center; gap: 4px;
@@ -240,7 +265,8 @@
   .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 22px; padding-top: 16px; border-top: 1px solid #2a2a2a; font-size: .79rem; color: #777; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .dot { width: 9px; height: 9px; border-radius: 50%; }
-  .do { background: #f0a030; } .db { background: #4ab0f0; } .ds { background: #555; }
+  .do { background: #f06060; } .dy { background: #e0c030; }
+  .dg { background: #6dcc6d; } .ds { background: #555; }
 </style>
 </head>
 <body>
@@ -355,8 +381,15 @@
       <button class="edit-toggle" id="editToggle">✏ Bearbeiten</button>
     </div>
   </div>
-  <div class="toolbar">
-    <button class="btn-reset" id="resetBtn">↺ Zurücksetzen</button>
+  <div class="toolbar" style="justify-content:flex-start">
+    <div class="sort-wrap">
+      <button class="btn-sort" id="btnSort">Ordnen <span class="arrow">▼</span></button>
+      <div class="sort-menu" id="sortMenu">
+        <div class="sort-option active" data-sort="date"><span class="sort-icon">📅</span> Nach Datum</div>
+        <div class="sort-option" data-sort="type"><span class="sort-icon">📝</span> Nach Prüfungsart</div>
+        <div class="sort-option" data-sort="module"><span class="sort-icon">📚</span> Nach Modul</div>
+      </div>
+    </div>
   </div>
   <table>
     <thead>
@@ -375,8 +408,9 @@
     <tbody id="tbody"></tbody>
   </table>
   <div class="legend">
-    <span class="legend-item"><span class="dot do"></span> Bald fällig (≤ 21 Tage)</span>
-    <span class="legend-item"><span class="dot db"></span> Später</span>
+    <span class="legend-item"><span class="dot do"></span> Bald (≤ 4 Wochen)</span>
+    <span class="legend-item"><span class="dot dy"></span> Später (5–9 Wochen)</span>
+    <span class="legend-item"><span class="dot dg"></span> Sehr spät (10+ Wochen)</span>
     <span class="legend-item"><span class="dot ds"></span> Termin offen</span>
   </div>
 </div>
@@ -492,12 +526,19 @@ function getField(id, field, fallback) {
 function computeStatus(p) {
   if (!p.deadline) return 'offen';
   const t = new Date(); t.setHours(0,0,0,0);
-  const d = Math.ceil((new Date(p.deadline) - t) / 86400000);
-  if (d < 0) return 'offen';
-  return d <= 21 ? 'bald' : 'später';
+  const weeks = (new Date(p.deadline) - t) / (7 * 86400000);
+  if (weeks < 0)  return 'offen';
+  if (weeks <= 4) return 'bald';
+  if (weeks <= 9) return 'später';
+  return 'sehr-spät';
 }
 function sbadge(s) {
-  const m = { bald:['s-bald','bald'], später:['s-später','später'], offen:['s-offen','offen'] };
+  const m = {
+    bald:      ['s-bald',      'Bald'],
+    später:    ['s-später',    'Später'],
+    'sehr-spät':['s-sehr-spät','Sehr spät'],
+    offen:     ['s-offen',     'Offen']
+  };
   return `<span class="sbadge ${m[s][0]}">${m[s][1]}</span>`;
 }
 function tcls(t) {
@@ -514,12 +555,36 @@ function updateArcCount() {
   el.className = 'arc-count' + (n ? ' has' : '');
 }
 
+function sortItems(items) {
+  const copy = [...items];
+  if (currentSort === 'date') {
+    copy.sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    });
+  } else if (currentSort === 'type') {
+    const order = ['Klausur','Hausarbeit','Abgabe','Präsentation','Bericht'];
+    copy.sort((a, b) => {
+      const ai = order.indexOf(a.typ), bi = order.indexOf(b.typ);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  } else if (currentSort === 'module') {
+    copy.sort((a, b) => {
+      const am = getField(a.id,'mod',a.mod), bm = getField(b.id,'mod',b.mod);
+      return am.localeCompare(bm, 'de');
+    });
+  }
+  return copy;
+}
+
 // ── Render main table ─────────────────────────────────────────────────
 function render() {
   const tb = document.getElementById('tbody');
   tb.innerHTML = '';
   const ce = editMode ? 'true' : 'false';
-  const visible = allItems().filter(p => !archive[p.id]);
+  const visible = sortItems(allItems().filter(p => !archive[p.id]));
 
   if (!visible.length) {
     const tr = document.createElement('tr');
@@ -567,7 +632,34 @@ function saveCurrentEdits() {
   sv(K_EDITS, edits);
 }
 
-// ── Edit toggle ───────────────────────────────────────────────────────
+// ── Sort state ────────────────────────────────────────────────────────
+let currentSort = 'date';
+
+// ── Sort dropdown ─────────────────────────────────────────────────────
+const btnSort  = document.getElementById('btnSort');
+const sortMenu = document.getElementById('sortMenu');
+
+btnSort.addEventListener('click', function(e) {
+  e.stopPropagation();
+  const open = sortMenu.classList.toggle('open');
+  btnSort.classList.toggle('open', open);
+});
+document.addEventListener('click', function() {
+  sortMenu.classList.remove('open');
+  btnSort.classList.remove('open');
+});
+sortMenu.addEventListener('click', function(e) {
+  const opt = e.target.closest('.sort-option');
+  if (!opt) return;
+  currentSort = opt.dataset.sort;
+  sortMenu.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+  opt.classList.add('active');
+  const labels = { date:'Nach Datum', type:'Nach Prüfungsart', module:'Nach Modul' };
+  btnSort.innerHTML = `${labels[currentSort]} <span class="arrow">▼</span>`;
+  sortMenu.classList.remove('open');
+  btnSort.classList.remove('open');
+  render();
+});
 document.getElementById('editToggle').addEventListener('click', function() {
   if (editMode) saveCurrentEdits();
   editMode = !editMode;
@@ -605,14 +697,7 @@ document.getElementById('tbody').addEventListener('click', function(e) {
   }
 });
 
-// ── Reset ─────────────────────────────────────────────────────────────
-document.getElementById('resetBtn').addEventListener('click', function() {
-  if (!confirm('Alle Erledigungen zurücksetzen? (Archiv wird geleert)')) return;
-  done = {}; archive = {}; custom = []; edits = {};
-  baseData.forEach(p => { if (p.preDone) { done[p.id] = true; archive[p.id] = true; } });
-  sv(K_DONE,done); sv(K_ARCHIVE,archive); sv(K_CUSTOM,custom); sv(K_EDITS,edits);
-  render();
-});
+
 
 // ── Add modal ─────────────────────────────────────────────────────────
 function openAddModal() {
