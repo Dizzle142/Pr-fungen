@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="theme-color" content="#1e1e1e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Prüfungen">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+<title>Prüfungsübersicht SoSe 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1e1e1e; color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh; padding: 32px 20px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  /* Header */
+  .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .header-left h1 { font-size: 1.5rem; font-weight: 700; color: #f0f0f0; }
+  .header-left p  { font-size: .84rem; color: #888; margin-top: 4px; }
+  .header-btns { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .btn-add {
+    display: flex; align-items: center; gap: 6px;
+    background: #1a4a6a; color: #7dd4f8; border: 1px solid #2a6a9a;
+    border-radius: 9px; padding: 7px 16px; font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: all .18s;
+  }
+  .btn-add:hover { background: #205a80; border-color: #4ab0f0; }
+
+  .btn-archive {
+    display: flex; align-items: center; gap: 6px;
+    background: #2a2a2a; color: #aaa; border: 1px solid #3a3a3a;
+    border-radius: 9px; padding: 7px 14px; font-size: .85rem; font-weight: 500;
+    cursor: pointer; transition: all .18s;
+  }
+  .btn-archive:hover { background: #333; border-color: #555; color: #ddd; }
+  .btn-archive .arc-count {
+    background: #3a3a3a; border-radius: 20px; padding: 1px 7px;
+    font-size: .72rem; color: #888;
+  }
+  .btn-archive .arc-count.has { background: #2a3a1a; color: #6dcc6d; }
+
+  .edit-toggle {
+    background: none; border: 1px solid #2e2e2e; border-radius: 7px;
+    color: #444; font-size: .78rem; padding: 7px 12px; cursor: pointer; transition: all .2s;
+  }
+  .edit-toggle:hover  { border-color: #555; color: #888; }
+  .edit-toggle.active { border-color: #f0a030; color: #f0a030; background: #2a1e00; }
+
+  /* Table */
+  .toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+  .btn-reset {
+    background: #2a2a2a; color: #999; border: 1px solid #3a3a3a;
+    border-radius: 8px; padding: 6px 13px; font-size: .78rem; cursor: pointer; transition: all .15s;
+  }
+  .btn-reset:hover { background: #333; color: #ddd; border-color: #555; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; font-size: .76rem; text-transform: uppercase;
+    letter-spacing: .06em; color: #777; padding: 10px 12px; border-bottom: 1px solid #333;
+  }
+  tbody tr { border-bottom: 1px solid #272727; transition: background .15s; }
+  tbody tr:hover { background: #252525; }
+  tbody td { padding: 13px 12px; vertical-align: top; }
+  td.num { color: #555; font-size: .88rem; width: 32px; vertical-align: middle; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    border-radius: 8px; padding: 3px 9px 3px 7px; font-size: .76rem; font-weight: 700; white-space: nowrap;
+  }
+  .badge-label { font-size: .83rem; font-weight: 800; }
+  .badge-prof  { font-size: .7rem; font-weight: 400; opacity: .85; }
+  .badge.wia  { background: #3a2f7a; color: #c4baff; }
+  .badge.pva  { background: #1b6e4f; color: #96edd4; }
+  .badge.psk  { background: #6e2a1a; color: #f0b8a0; }
+  .badge.klsr { background: #1a3a5e; color: #8ec8f8; }
+
+  .type-pill {
+    display: inline-block; font-size: .68rem; font-weight: 600;
+    border-radius: 20px; padding: 1px 7px; margin-left: 5px; vertical-align: middle;
+  }
+  .t-klausur    { background: #1e3a60; color: #80c8ff; }
+  .t-praes      { background: #1a4a3a; color: #80e8b8; }
+  .t-hausarbeit { background: #3a400a; color: #c8e060; }
+  .t-abgabe     { background: #40300a; color: #f0b840; }
+  .t-bericht    { background: #1e3040; color: #80b8d0; }
+
+  .ltitle { font-size: .93rem; font-weight: 600; color: #e6e6e6; line-height: 1.4; }
+  .lsub   { font-size: .83rem; color: #c0c0c0; margin-top: 4px; line-height: 1.5; }
+  .lnote  { font-size: .76rem; color: #666;    margin-top: 3px; line-height: 1.45; }
+
+  td.deadline { font-size: .88rem; font-weight: 600; color: #bbb; white-space: nowrap; vertical-align: middle; }
+
+  .sbadge { display: inline-block; border-radius: 20px; padding: 3px 11px; font-size: .76rem; font-weight: 700; white-space: nowrap; }
+  .s-bald     { background: #4a3010; color: #f0a030; border: 1px solid #7a5020; }
+  .s-später   { background: #10304a; color: #4ab0f0; border: 1px solid #20607a; }
+  .s-offen    { background: #2e2e2e; color: #999;    border: 1px solid #444; }
+
+  td.chk { width: 40px; text-align: center; vertical-align: middle; }
+  .cbtn {
+    width: 21px; height: 21px; border-radius: 6px; border: 2px solid #444; background: transparent;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    color: transparent; font-size: 12px; transition: all .15s;
+  }
+  .cbtn:hover { border-color: #6dcc6d; color: #6dcc6d44; }
+
+  .abtn {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: none; border: 1px solid #333; border-radius: 6px;
+    color: #555; font-size: .7rem; padding: 2px 7px;
+    cursor: pointer; margin-left: 6px; transition: all .15s; vertical-align: middle;
+  }
+  .abtn:hover    { border-color: #4ab0f0; color: #4ab0f0; }
+  .abtn.has-docs { border-color: #1a3a6a; color: #4ab0f0; background: #0d1a2e; }
+  .title-link { cursor: pointer; }
+  .title-link:hover { text-decoration: underline; text-decoration-color: #444; }
+
+  /* contenteditable */
+  [contenteditable="true"] {
+    outline: none; border-radius: 5px; padding: 3px 5px; margin: -3px -5px;
+    background: #1a1a2e; border: 1px dashed #3a3aaa; cursor: text; display: inline-block; width: 100%;
+  }
+  [contenteditable="true"]:focus { background: #1c1c38; border-color: #5a5aff; }
+
+  /* Delete row btn (edit mode) */
+  .del-row-btn {
+    background: none; border: 1px solid #3a1a1a; border-radius: 6px;
+    color: #883333; font-size: .75rem; padding: 2px 8px; cursor: pointer;
+    margin-left: 6px; transition: all .15s; vertical-align: middle;
+  }
+  .del-row-btn:hover { border-color: #f06060; color: #f06060; background: #2a0a0a; }
+
+  /* Bold bar */
+  #boldBar {
+    position: fixed; z-index: 9999; background: #2a2a2a; border: 1px solid #444;
+    border-radius: 8px; padding: 4px 6px; display: none; align-items: center; gap: 4px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.6);
+  }
+  #boldBar.visible { display: flex; }
+  #boldBar button {
+    background: none; border: 1px solid #444; border-radius: 5px;
+    color: #ccc; font-size: .8rem; padding: 3px 10px; cursor: pointer; transition: all .15s;
+  }
+  #boldBar button:hover { background: #3a3a3a; border-color: #666; }
+  #boldBar button.on { background: #2a3a6a; border-color: #4ab0f0; color: #4ab0f0; }
+  #boldBar .sep { width: 1px; height: 16px; background: #3a3a3a; margin: 0 2px; }
+
+  /* Modals shared */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.78); z-index: 1000; align-items: center; justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .mbox {
+    background: #1e1e1e; border: 1px solid #383838; border-radius: 14px;
+    padding: 26px; width: 94%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  }
+  .mbox.wide { max-width: 900px; }
+  .mhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .mhead h2 { font-size: 1rem; font-weight: 700; color: #f0f0f0; }
+  .mclose { background: none; border: none; color: #555; font-size: 1.3rem; cursor: pointer; }
+  .mclose:hover { color: #aaa; }
+
+  /* Add form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-group label { display: block; font-size: .74rem; color: #777; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; background: #252525; border: 1px solid #383838; border-radius: 8px;
+    color: #e0e0e0; font-size: .85rem; padding: 9px 11px; outline: none; font-family: inherit;
+    transition: border-color .15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #4a6aaa; }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+  .form-group select option { background: #252525; }
+  .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  .btn-cancel { background: #2a2a2a; color: #888; border: 1px solid #3a3a3a; border-radius: 8px; padding: 8px 18px; font-size: .85rem; cursor: pointer; }
+  .btn-cancel:hover { background: #333; color: #bbb; }
+  .btn-save { background: #1a4a6a; color: #7dd4f8; border: 1px solid #2a6a9a; border-radius: 8px; padding: 8px 20px; font-size: .85rem; font-weight: 600; cursor: pointer; }
+  .btn-save:hover { background: #205a80; }
+
+  /* Doc modal */
+  .doc-empty { color: #555; font-size: .82rem; text-align: center; padding: 16px 0; }
+  .doc-list  { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .doc-item  { display: flex; align-items: center; gap: 10px; background: #252525; border: 1px solid #333; border-radius: 8px; padding: 10px 12px; }
+  .doc-name  { flex: 1; font-size: .83rem; color: #ddd; word-break: break-all; }
+  .doc-btn   { background: none; border: 1px solid #444; border-radius: 6px; color: #888; font-size: .73rem; padding: 3px 9px; cursor: pointer; white-space: nowrap; }
+  .doc-btn:hover     { border-color: #4ab0f0; color: #4ab0f0; }
+  .doc-btn.del:hover { border-color: #f06060; color: #f06060; }
+  .upload-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; background: #252525; border: 2px dashed #3a3a3a; border-radius: 10px;
+    padding: 14px; cursor: pointer; color: #666; font-size: .84rem; transition: all .15s;
+  }
+  .upload-btn:hover { border-color: #4ab0f0; color: #4ab0f0; }
+
+  /* Archive modal table */
+  .arc-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .arc-table th { text-align: left; font-size: .73rem; text-transform: uppercase; letter-spacing: .05em; color: #666; padding: 8px 10px; border-bottom: 1px solid #2a2a2a; }
+  .arc-table td { padding: 11px 10px; border-bottom: 1px solid #222; font-size: .84rem; vertical-align: middle; }
+  .arc-table tr:hover td { background: #232323; }
+  .arc-empty { text-align: center; color: #555; padding: 32px; font-size: .88rem; }
+  /* Archive select mode */
+  .arc-row-wrap { position: relative; border-bottom: 1px solid #222; }
+  .arc-row-inner {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 10px; background: #1e1e1e;
+    user-select: none; -webkit-user-select: none;
+  }
+  .arc-row-inner.selected { background: #1a2a1a; }
+  .arc-select-circle {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid #444; flex-shrink: 0;
+    display: none; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s; color: transparent; font-size: 11px;
+  }
+  .select-mode .arc-select-circle { display: flex; }
+  .arc-select-circle.checked { background: #1a4a1a; border-color: #6dcc6d; color: #6dcc6d; }
+  .arc-mhead-btns { display: flex; align-items: center; gap: 8px; }
+  .btn-select {
+    background: none; border: 1px solid #3a3a3a; border-radius: 7px;
+    color: #aaa; font-size: .78rem; padding: 4px 12px; cursor: pointer; transition: all .15s;
+  }
+  .btn-select:hover { border-color: #555; color: #ddd; }
+  .btn-select.active { border-color: #f0a030; color: #f0a030; background: #2a1e00; }
+  .btn-del-selected {
+    background: #5a1010; border: 1px solid #8a2020; border-radius: 7px;
+    color: #ff9090; font-size: .78rem; font-weight: 600; padding: 4px 12px; cursor: pointer; transition: all .15s;
+  }
+  .btn-del-selected:hover { background: #7a1818; }
+
+  .btn-restore { background: none; border: 1px solid #2a4a2a; color: #6dcc6d; border-radius: 6px; font-size: .73rem; padding: 3px 10px; cursor: pointer; white-space: nowrap; }
+  .btn-restore:hover { background: #1a4a1a; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 22px; padding-top: 16px; border-top: 1px solid #2a2a2a; font-size: .79rem; color: #777; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .do { background: #f0a030; } .db { background: #4ab0f0; } .ds { background: #555; }
+</style>
+</head>
+<body>
+
+<!-- Bold bar -->
+<div id="boldBar">
+  <button id="btnBold"><b>B</b></button>
+  <div class="sep"></div>
+  <button id="btnItalic"><i>I</i></button>
+</div>
+
+<!-- Add modal -->
+<div class="overlay" id="addModal">
+  <div class="mbox">
+    <div class="mhead">
+      <h2>Neue Prüfung hinzufügen</h2>
+      <button class="mclose" id="addClose">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Modul</label>
+        <input type="text" id="f-mod" placeholder="z. B. Mathematik">
+      </div>
+      <div class="form-group">
+        <label>Modul-Farbe</label>
+        <select id="f-badge">
+          <option value="klsr">Blau (Klausur)</option>
+          <option value="wia">Lila (Portfolio/Wiss.)</option>
+          <option value="pva">Grün (PVA)</option>
+          <option value="psk">Rot (PSK)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Prüfer / Professor</label>
+        <input type="text" id="f-prof" placeholder="z. B. Prof. Meier">
+      </div>
+      <div class="form-group">
+        <label>Prüfungstyp</label>
+        <select id="f-typ">
+          <option value="Klausur">Klausur</option>
+          <option value="Präsentation">Präsentation</option>
+          <option value="Hausarbeit">Hausarbeit</option>
+          <option value="Abgabe">Abgabe</option>
+          <option value="Bericht">Bericht</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Prüfungsleistung / Titel</label>
+        <input type="text" id="f-title" placeholder="z. B. Klausur Kreditgeschäfte">
+      </div>
+      <div class="form-group full">
+        <label>Inhalt / Aufgabe</label>
+        <textarea id="f-sub" placeholder="Kurzbeschreibung der Prüfung…"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Aufgabe (detailliert)</label>
+        <textarea id="f-aufg" placeholder="Konkrete Aufgabenstellung, Leitfragen…"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Hinweis / Benotung</label>
+        <textarea id="f-note" placeholder="Gewichtung, Raum, Gruppeninfo…" style="min-height:50px"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Deadline</label>
+        <input type="date" id="f-deadline">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" id="addCancel">Abbrechen</button>
+      <button class="btn-save" id="addSave">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Archive modal -->
+<div class="overlay" id="arcModal">
+  <div class="mbox wide">
+    <div class="mhead">
+      <h2>📁 Archiv — Erledigte Prüfungen</h2>
+      <div class="arc-mhead-btns">
+        <button class="btn-del-selected" id="btnDelSelected" style="display:none">🗑 Löschen</button>
+        <button class="btn-select" id="btnSelect">Auswählen</button>
+        <button class="mclose" id="arcClose">✕</button>
+      </div>
+    </div>
+    <div id="arcContent"></div>
+  </div>
+</div>
+
+<!-- Doc modal -->
+<div class="overlay" id="docModal">
+  <div class="mbox">
+    <div class="mhead">
+      <h2 id="docModalTitle" style="font-size:.9rem;flex:1;margin-right:12px;color:#f0f0f0;font-weight:700;line-height:1.4"></h2>
+      <button class="mclose" id="docClose">✕</button>
+    </div>
+    <div class="doc-list" id="docList"></div>
+    <button class="upload-btn" id="uploadBtn">📎 &nbsp;PDF-Dokument hochladen</button>
+    <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple style="display:none">
+  </div>
+</div>
+
+<div class="container">
+  <div class="header-row">
+    <div class="header-left">
+      <h1>Prüfungsübersicht SoSe 2026 — BHH Hamburg</h1>
+      <p>FW Bank Gruppe 2</p>
+    </div>
+    <div class="header-btns">
+      <button class="btn-add" id="btnAdd">＋ Hinzufügen</button>
+      <button class="btn-archive" id="btnArc">📁 Archiv <span class="arc-count" id="arcCount">0</span></button>
+      <button class="edit-toggle" id="editToggle">✏ Bearbeiten</button>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="btn-reset" id="resetBtn">↺ Zurücksetzen</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:32px">#</th>
+        <th>Modul</th>
+        <th>Prüfungsleistung</th>
+        <th>Inhalt / Aufgabe</th>
+        <th style="min-width:280px">Aufgabe</th>
+        <th>Hinweis / Benotung</th>
+        <th>Deadline</th>
+        <th style="text-align:center">Status</th>
+        <th style="text-align:center;width:40px">✓</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="legend">
+    <span class="legend-item"><span class="dot do"></span> Bald fällig (≤ 21 Tage)</span>
+    <span class="legend-item"><span class="dot db"></span> Später</span>
+    <span class="legend-item"><span class="dot ds"></span> Termin offen</span>
+  </div>
+</div>
+
+<script>
+// ── Keys ──────────────────────────────────────────────────────────────
+const K_DONE    = 'pruef_done_v3';
+const K_EDITS   = 'pruef_edits_v3';
+const K_CUSTOM  = 'pruef_custom_v3';
+const K_ARCHIVE = 'pruef_archive_v3';
+
+// ── State ─────────────────────────────────────────────────────────────
+const docStore = {};
+let activeDocId = null;
+let editMode    = false;
+let barPinned   = false;
+
+// ── Base data ─────────────────────────────────────────────────────────
+const baseData = [
+  { id:1,  mod:'Wiss. Arbeiten',   prof:'Prof. Franke',     badge:'wia',  typ:'Präsentation',
+    title:'Portfolio Teil I — Präs. aktueller Forschung',
+    sub:'3–4 Min. Präsentation einer Fachstudie (BWL/Bank/Finanz)',
+    note:'Notenanteil 40 % · bereits im WS 2025/26 erbracht', deadline:null, preDone:true },
+  { id:2,  mod:'Mathematik',       prof:'Schmeckpeper',     badge:'klsr', typ:'Klausur',
+    title:'Klausur Mathematische Methoden',
+    sub:'100 Minuten · alle Gruppen', note:'Ersttermin 06.01.2026', deadline:'2026-01-06', preDone:true },
+  { id:3,  mod:'Priv.-/Firmenkd.', prof:'Best u.a.',        badge:'klsr', typ:'Klausur',
+    title:'Klausur Privat- und Firmenkundengeschäfte',
+    sub:'135 Minuten · alle Gruppen', note:'Ersttermin 16.02.2026', deadline:'2026-02-16', preDone:true },
+  { id:4,  mod:'PSK',              prof:'Buth / Dörlemann', badge:'psk',  typ:'Hausarbeit',
+    title:'PSK — Schriftliche Ausarbeitung (5 Seiten)',
+    sub:'Darstellung, Reflexion und Praxis-Transfer zu Theorien/Modellen',
+    note:'Teil 1 von 2 · Notenanteil 50 % · Abgabe 3 Wo. nach letzter Sitzung (17.02.2026)',
+    deadline:'2026-02-17', preDone:true },
+  { id:5,  mod:'Wiss. Arbeiten',   prof:'Prof. Franke',     badge:'wia',  typ:'Hausarbeit',
+    title:'Portfolio Teil II — Erstellung einer Gliederung',
+    sub:'4–5 Seiten (ohne Deckblatt/Quellen) · Abgabe auf Academy 5',
+    note:'Notenanteil 40 % · Grundlage: Anschlussforschung aus Portfolio Teil I', deadline:'2026-04-28' },
+  { id:6,  mod:'PVA I',            prof:'Franke / Reustlen',badge:'pva',  typ:'Präsentation',
+    title:'PVA I — Präsentation I (Open Peer Review)',
+    sub:'Vorstellung der PVA: 3 Leitfragen · ca. 10 Min. inkl. Peer-Review',
+    note:'Zeitraum 21.04.–08.05.2026 · unbenotet (pass/fail)', deadline:'2026-05-08' },
+  { id:7,  mod:'PSK',              prof:'Buth / Dörlemann', badge:'psk',  typ:'Präsentation',
+    title:'PSK — Einzelpräsentation + Gruppendiskussion',
+    sub:'5 Min. Präsentation + 10 Min. Moderation einer Gruppendiskussion',
+    note:'Gruppe 4 · 08.05.2026 · 9:45–13:00 · Raum Z 2.01, Zeughausmarkt 32 · Notenanteil 50 %', deadline:'2026-05-08' },
+  { id:8,  mod:'PVA I',            prof:'Franke / Reustlen',badge:'pva',  typ:'Abgabe',
+    title:'PVA I — Schriftliche Praxisvalidierungsarbeit',
+    sub:'15-seitige wissenschaftliche Arbeit zum vereinbarten Thema',
+    note:'Unbenotet (pass/fail) · Ausschlusskriterium: Zitation · Feedback-Gespräch obligatorisch', deadline:'2026-05-18' },
+  { id:9,  mod:'Wiss. Arbeiten',   prof:'Prof. Franke',     badge:'wia',  typ:'Hausarbeit',
+    title:'Portfolio Teil III — Reflexion der Learning Points',
+    sub:'Reflexion & Selbstbewertung der PVA I',
+    note:'Notenanteil 20 % · Aufgabenstellung wird Anfang Mai bekanntgegeben', deadline:'2026-06-10' },
+  { id:10, mod:'PVA I',            prof:'Franke / Reustlen',badge:'pva',  typ:'Präsentation',
+    title:'PVA I — Präsentation II (Post-Submission Peer Review)',
+    sub:'15 Min. · 7 Leitfragen · Erkenntnisse, Methoden, Praxisbezug',
+    note:'Bewertet (Bestehensleistung) · Zeitraum 16./30.06.2026', deadline:'2026-06-30' },
+  { id:11, mod:'Geld & Vermögen',  prof:'Gatzen / Bösche',  badge:'klsr', typ:'Klausur',
+    title:'Klausur Geld- und Vermögensanlage',
+    sub:'60 Minuten · 25 Punkte · Teil 1 von 2 (kombinierte Modulprüfung)',
+    note:'Prüfungszeitraum 15.–19.06.2026', deadline:'2026-06-19' },
+  { id:12, mod:'Kreditgeschäfte',  prof:'Best u.a.',        badge:'klsr', typ:'Klausur',
+    title:'Klausur Kreditgeschäfte',
+    sub:'135 Minuten · alle Gruppen', note:'Prüfungszeitraum 22.–26.06.2026', deadline:'2026-06-26' },
+  { id:13, mod:'Wirtschaftsrecht', prof:'Möller',           badge:'klsr', typ:'Klausur',
+    title:'Klausur Wirtschafts-, Arbeits- und SozVersR',
+    sub:'100 Minuten · Grundlagen WiR, Arbeits- und SozVersR', note:'Gruppe 2 → Möller · 06.07.2026', deadline:'2026-07-06' },
+  { id:14, mod:'PVA I',            prof:'Prof. Franke',     badge:'pva',  typ:'Bericht',
+    title:'PVA I — Praxisbericht',
+    sub:'Ergänzende Reflexion anhand BHH-Formular · vom Ausbildungsunternehmen zu unterzeichnen',
+    note:'Unbenotet (pass/fail) · Nachweis der Ausbildung · Ende SoSe 2026 (ca. 20.08.2026)', deadline:'2026-08-20' },
+];
+
+const aufgabenBase = {
+  1:'Fachstudie (BWL/Bank/Finanz) präsentieren: Ausgangspunkt, Ziel, Erscheinungszeitraum, Expertise der Forscher, 2 Erkenntnisse vorstellen · Forschung hinsichtlich Erkenntnisgewinnung & Allgemeingültigkeit bewerten · Idee für Anschlussforschung skizzieren',
+  4:'Schriftliche Hausarbeit (5 S.): Darstellung, Reflexion und Praxis-Transfer zu vorgestellten Theorien/Modellen nach vorgegebenen Leitfragen',
+  5:'(1) Forschungsfrage & Zielgruppe der Anschlussforschung vorstellen · (2) Gliederung mit 4–5 Kapiteln erstellen · (3) Begründung für Gliederung & Aufbau formulieren · (4) Quellenverzeichnis erstellen · (5) Aufwand und Prozess reflektieren',
+  6:'3 Leitfragen: (1) Was ist der Forschungsgegenstand der PVA? · (2) Wie kamen Sie auf das Thema? BWL-Bezug? · (3) Kontext der PVA: relevante Abteilung/Geschäftsbereich, Leistungsschwerpunkte, Mitarbeiterzahl',
+  7:'Leitfragen Gruppe 4: (1) Was steht „Team"/„Teamarbeit" für in Ihrem Unternehmen? 2 Beispiele · (2) Wie beschreiben Sie den Führungsstil? · Anschließend: Gruppendiskussion eigenständig einleiten & 10 Min. moderieren',
+  8:'15-seitige wissenschaftliche Arbeit zum vereinbarten Thema · Wissenschaftliche Standards müssen erfüllt sein (Ausschlusskriterium: Zitation) · Feedback-Gespräch ist obligatorisch',
+  9:'Reflexion & Selbstbewertung der PVA I — konkrete Aufgabenstellung wird Anfang Mai bekanntgegeben',
+  10:'7 Leitfragen (15 Min.): (1) 2 zentrale Erkenntnisse · (2) Forschungsansatz & Begründung · (3) Theorie-Praxis-Verzahnung · (4) Einbindung des Unternehmens · (5) Nutzen für Ausbildungsunternehmen · (6) Prozessentwicklung & Hindernisse · (7) Was würden Sie heute anders machen?',
+  14:'Ergänzende Reflexion anhand vorgegebener BHH-Leitfragen in einem Formular · Vom Ausbildungsunternehmen unterschreiben lassen und bei der BHH einreichen',
+};
+
+// ── Persistence ───────────────────────────────────────────────────────
+function ld(k) { try { return JSON.parse(localStorage.getItem(k)) || (k===K_CUSTOM?[]:{}) } catch { return k===K_CUSTOM?[]:{} } }
+function sv(k,v) { try { localStorage.setItem(k,JSON.stringify(v)) } catch {} }
+
+let done    = ld(K_DONE);
+let edits   = ld(K_EDITS);
+let custom  = ld(K_CUSTOM);   // array of custom items
+let archive = ld(K_ARCHIVE);  // { id: true }
+
+// Pre-mark base preDone items
+baseData.forEach(p => { if (p.preDone && done[p.id] === undefined) { done[p.id] = true; archive[p.id] = true; } });
+sv(K_DONE, done); sv(K_ARCHIVE, archive);
+
+// ── All items ─────────────────────────────────────────────────────────
+function allItems() { return [...baseData, ...custom]; }
+function getAufg(id) {
+  const k = id+'-aufg';
+  if (edits[k] !== undefined) return edits[k];
+  return aufgabenBase[id] || '';
+}
+function getField(id, field, fallback) {
+  const k = id+'-'+field;
+  return edits[k] !== undefined ? edits[k] : (fallback||'');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function computeStatus(p) {
+  if (!p.deadline) return 'offen';
+  const t = new Date(); t.setHours(0,0,0,0);
+  const d = Math.ceil((new Date(p.deadline) - t) / 86400000);
+  if (d < 0) return 'offen';
+  return d <= 21 ? 'bald' : 'später';
+}
+function sbadge(s) {
+  const m = { bald:['s-bald','bald'], später:['s-später','später'], offen:['s-offen','offen'] };
+  return `<span class="sbadge ${m[s][0]}">${m[s][1]}</span>`;
+}
+function tcls(t) {
+  return ({Klausur:'t-klausur',Präsentation:'t-praes',Hausarbeit:'t-hausarbeit',Abgabe:'t-abgabe',Bericht:'t-bericht'})[t]||'t-abgabe';
+}
+function fmtDl(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+'.';
+}
+function updateArcCount() {
+  const n = Object.keys(archive).length;
+  const el = document.getElementById('arcCount');
+  el.textContent = n;
+  el.className = 'arc-count' + (n ? ' has' : '');
+}
+
+// ── Render main table ─────────────────────────────────────────────────
+function render() {
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = '';
+  const ce = editMode ? 'true' : 'false';
+  const visible = allItems().filter(p => !archive[p.id]);
+
+  if (!visible.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="9" style="text-align:center;color:#555;padding:32px;font-size:.88rem">Alle Prüfungen erledigt — schaue ins Archiv 📁</td>`;
+    tb.appendChild(tr); updateArcCount(); return;
+  }
+
+  visible.forEach((p, idx) => {
+    const s = computeStatus(p);
+    const hasDocs = (docStore[p.id]||[]).length;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="num">${idx+1}</td>
+      <td>
+        <span class="badge ${p.badge}">
+          <span class="badge-label">${getField(p.id,'mod',p.mod)}</span>
+          <span class="badge-prof">${getField(p.id,'prof',p.prof)}</span>
+        </span>
+      </td>
+      <td>
+        <div class="ltitle">
+          <span class="title-link" data-id="${p.id}" data-field="title"
+            contenteditable="${ce}" data-pid="${p.id}">${getField(p.id,'title',p.title)}</span>
+          <span class="type-pill ${tcls(p.typ)}">${p.typ}</span>
+          <button class="abtn${hasDocs?' has-docs':''}" data-id="${p.id}">📎${hasDocs?' '+hasDocs:''}</button>
+          ${editMode ? `<button class="del-row-btn" data-id="${p.id}" title="Zeile löschen">✕</button>` : ''}
+        </div>
+      </td>
+      <td><div class="lsub"  contenteditable="${ce}" data-pid="${p.id}" data-field="sub">${getField(p.id,'sub',p.sub||'')}</div></td>
+      <td><div class="lsub"  contenteditable="${ce}" data-pid="${p.id}" data-field="aufg">${getAufg(p.id)}</div></td>
+      <td><div class="lnote" contenteditable="${ce}" data-pid="${p.id}" data-field="note">${getField(p.id,'note',p.note||'')}</div></td>
+      <td class="deadline">${fmtDl(p.deadline)}</td>
+      <td style="text-align:center;vertical-align:middle">${sbadge(s)}</td>
+      <td class="chk"><button class="cbtn" data-id="${p.id}" title="Erledigen & archivieren">✓</button></td>`;
+    tb.appendChild(tr);
+  });
+  updateArcCount();
+}
+
+// ── Save edits ─────────────────────────────────────────────────────────
+function saveCurrentEdits() {
+  document.querySelectorAll('[contenteditable][data-pid]').forEach(el => {
+    edits[el.dataset.pid+'-'+el.dataset.field] = el.innerHTML;
+  });
+  sv(K_EDITS, edits);
+}
+
+// ── Edit toggle ───────────────────────────────────────────────────────
+document.getElementById('editToggle').addEventListener('click', function() {
+  if (editMode) saveCurrentEdits();
+  editMode = !editMode;
+  this.textContent = editMode ? '✔ Fertig' : '✏ Bearbeiten';
+  this.classList.toggle('active', editMode);
+  hideBar(); render();
+});
+
+// ── Table events ──────────────────────────────────────────────────────
+document.getElementById('tbody').addEventListener('click', function(e) {
+  // Check → archive
+  const cb = e.target.closest('.cbtn');
+  if (cb) {
+    const id = +cb.dataset.id;
+    done[id] = true; archive[id] = true;
+    sv(K_DONE, done); sv(K_ARCHIVE, archive);
+    render(); return;
+  }
+  // Doc button
+  const ab = e.target.closest('.abtn');
+  if (ab) { openDocModal(+ab.dataset.id); return; }
+  // Title link (non-edit)
+  const tl = e.target.closest('.title-link');
+  if (tl && !editMode) { openDocModal(+tl.dataset.id); return; }
+  // Delete row (edit mode)
+  const dr = e.target.closest('.del-row-btn');
+  if (dr && editMode) {
+    const id = +dr.dataset.id;
+    if (!confirm('Zeile löschen?')) return;
+    custom = custom.filter(c => c.id !== id);
+    // also remove base item from view by archiving it
+    const isBase = baseData.find(b => b.id === id);
+    if (isBase) { archive[id] = true; }
+    sv(K_CUSTOM, custom); sv(K_ARCHIVE, archive); render();
+  }
+});
+
+// ── Reset ─────────────────────────────────────────────────────────────
+document.getElementById('resetBtn').addEventListener('click', function() {
+  if (!confirm('Alle Erledigungen zurücksetzen? (Archiv wird geleert)')) return;
+  done = {}; archive = {}; custom = []; edits = {};
+  baseData.forEach(p => { if (p.preDone) { done[p.id] = true; archive[p.id] = true; } });
+  sv(K_DONE,done); sv(K_ARCHIVE,archive); sv(K_CUSTOM,custom); sv(K_EDITS,edits);
+  render();
+});
+
+// ── Add modal ─────────────────────────────────────────────────────────
+function openAddModal() {
+  ['f-mod','f-prof','f-title','f-sub','f-aufg','f-note'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('f-deadline').value='';
+  document.getElementById('f-badge').value='klsr';
+  document.getElementById('f-typ').value='Klausur';
+  document.getElementById('addModal').classList.add('open');
+}
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+
+document.getElementById('btnAdd').addEventListener('click', openAddModal);
+document.getElementById('addClose').addEventListener('click', closeAddModal);
+document.getElementById('addCancel').addEventListener('click', closeAddModal);
+document.getElementById('addModal').addEventListener('click', e => { if (e.target === document.getElementById('addModal')) closeAddModal(); });
+
+document.getElementById('addSave').addEventListener('click', function() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { alert('Bitte mindestens den Titel ausfüllen.'); return; }
+  const maxId = Math.max(...allItems().map(p=>p.id), 100);
+  const newItem = {
+    id:    maxId + 1,
+    mod:   document.getElementById('f-mod').value.trim() || 'Neues Modul',
+    prof:  document.getElementById('f-prof').value.trim() || '—',
+    badge: document.getElementById('f-badge').value,
+    typ:   document.getElementById('f-typ').value,
+    title: title,
+    sub:   document.getElementById('f-sub').value.trim(),
+    note:  document.getElementById('f-note').value.trim(),
+    deadline: document.getElementById('f-deadline').value || null,
+    aufg:  document.getElementById('f-aufg').value.trim(),
+  };
+  // Store aufg in edits
+  if (newItem.aufg) { edits[newItem.id+'-aufg'] = newItem.aufg; sv(K_EDITS,edits); }
+  custom.push(newItem); sv(K_CUSTOM, custom);
+  closeAddModal(); render();
+});
+
+// ── Archive modal ─────────────────────────────────────────────────────
+let arcSelectMode = false;
+let arcSelected   = new Set();
+
+function openArcModal() {
+  arcSelectMode = false;
+  arcSelected.clear();
+  updateArcSelectUI();
+  renderArcContent();
+  document.getElementById('arcModal').classList.add('open');
+}
+
+function renderArcContent() {
+  const archivedItems = allItems().filter(p => archive[p.id]);
+  const el = document.getElementById('arcContent');
+  if (!archivedItems.length) {
+    el.innerHTML = '<p class="arc-empty">Noch nichts archiviert. Wenn du eine Prüfung als erledigt markierst, erscheint sie hier.</p>';
+    return;
+  }
+  const rows = document.getElementById('arcRows');
+  el.innerHTML = `<div id="arcRows" class="${arcSelectMode ? 'select-mode' : ''}">
+    ${archivedItems.map(p => `
+      <div class="arc-row-wrap" data-id="${p.id}">
+        <div class="arc-row-inner${arcSelected.has(p.id) ? ' selected' : ''}">
+          <div class="arc-select-circle${arcSelected.has(p.id) ? ' checked' : ''}" data-id="${p.id}">✓</div>
+          <span class="badge ${p.badge}" style="font-size:.72rem;flex-shrink:0">
+            <span class="badge-label">${getField(p.id,'mod',p.mod)}</span>
+          </span>
+          <span style="flex:1;color:#ccc;font-size:.84rem">${getField(p.id,'title',p.title)}</span>
+          <span class="type-pill ${tcls(p.typ)}" style="margin-left:0;flex-shrink:0">${p.typ}</span>
+          <span style="color:#777;font-size:.8rem;flex-shrink:0">${fmtDl(p.deadline)}</span>
+          <button class="btn-restore" data-id="${p.id}" style="flex-shrink:0">↩</button>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function updateArcSelectUI() {
+  const btnSelect     = document.getElementById('btnSelect');
+  const btnDelSel     = document.getElementById('btnDelSelected');
+  btnSelect.textContent = arcSelectMode ? 'Fertig' : 'Auswählen';
+  btnSelect.classList.toggle('active', arcSelectMode);
+  btnDelSel.style.display = (arcSelectMode && arcSelected.size > 0) ? 'inline-block' : 'none';
+}
+
+document.getElementById('btnSelect').addEventListener('click', function() {
+  arcSelectMode = !arcSelectMode;
+  if (!arcSelectMode) arcSelected.clear();
+  updateArcSelectUI();
+  renderArcContent();
+});
+
+document.getElementById('btnDelSelected').addEventListener('click', function() {
+  if (!arcSelected.size) return;
+  if (!confirm(`${arcSelected.size} Eintrag${arcSelected.size > 1 ? 'e' : ''} endgültig löschen?`)) return;
+  arcSelected.forEach(id => {
+    delete archive[id]; delete done[id];
+    custom = custom.filter(c => c.id !== id);
+  });
+  sv(K_ARCHIVE, archive); sv(K_DONE, done); sv(K_CUSTOM, custom);
+  arcSelected.clear();
+  render(); renderArcContent(); updateArcSelectUI();
+});
+function closeArcModal() { document.getElementById('arcModal').classList.remove('open'); }
+
+document.getElementById('btnArc').addEventListener('click', openArcModal);
+document.getElementById('arcClose').addEventListener('click', closeArcModal);
+document.getElementById('arcModal').addEventListener('click', e=>{
+  if (e.target===document.getElementById('arcModal')) closeArcModal();
+  // Restore
+  const rb=e.target.closest('.btn-restore');
+  if (rb) {
+    const id=+rb.dataset.id;
+    delete archive[id]; delete done[id];
+    sv(K_ARCHIVE,archive); sv(K_DONE,done);
+    arcSelected.delete(id);
+    render(); renderArcContent(); updateArcSelectUI(); return;
+  }
+  // Select circle
+  const sc = e.target.closest('.arc-select-circle');
+  if (sc && arcSelectMode) {
+    const id = +sc.dataset.id;
+    arcSelected.has(id) ? arcSelected.delete(id) : arcSelected.add(id);
+    updateArcSelectUI(); renderArcContent();
+  }
+});
+
+// ── Doc modal ─────────────────────────────────────────────────────────
+function openDocModal(id) {
+  activeDocId = id;
+  const p = allItems().find(x=>x.id===id);
+  document.getElementById('docModalTitle').textContent = p ? p.title : '';
+  renderDocList();
+  document.getElementById('docModal').classList.add('open');
+}
+function closeDocModal() { document.getElementById('docModal').classList.remove('open'); activeDocId=null; }
+function renderDocList() {
+  const docs = docStore[activeDocId]||[];
+  const el = document.getElementById('docList');
+  el.innerHTML = docs.length
+    ? docs.map((d,i)=>`<div class="doc-item"><span>📄</span><span class="doc-name">${d.name}</span>
+        <button class="doc-btn" data-action="open" data-i="${i}">Öffnen</button>
+        <button class="doc-btn del" data-action="del" data-i="${i}">✕</button></div>`).join('')
+    : '<div class="doc-empty">Noch keine Dokumente zugeordnet</div>';
+}
+document.getElementById('docClose').addEventListener('click', closeDocModal);
+document.getElementById('docModal').addEventListener('click', e=>{
+  if (e.target===document.getElementById('docModal')) closeDocModal();
+  const b=e.target.closest('.doc-btn'); if(!b) return;
+  const i=+b.dataset.i;
+  if (b.dataset.action==='open') window.open(docStore[activeDocId][i].url,'_blank');
+  else { URL.revokeObjectURL(docStore[activeDocId][i].url); docStore[activeDocId].splice(i,1); renderDocList(); render(); }
+});
+document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change',function(e){
+  if (!docStore[activeDocId]) docStore[activeDocId]=[];
+  Array.from(e.target.files).forEach(f=>docStore[activeDocId].push({name:f.name,url:URL.createObjectURL(f)}));
+  e.target.value=''; renderDocList(); render();
+});
+
+// ── Bold bar ──────────────────────────────────────────────────────────
+const boldBar=document.getElementById('boldBar'),btnBold=document.getElementById('btnBold'),btnItalic=document.getElementById('btnItalic');
+function hideBar(){boldBar.classList.remove('visible');}
+function showBar(){
+  if(!editMode)return;
+  const sel=window.getSelection();
+  if(!sel||sel.isCollapsed||!sel.toString().trim())return;
+  let node=sel.anchorNode; if(node&&node.nodeType===3)node=node.parentElement;
+  let inside=false;
+  while(node){if(node.getAttribute&&node.getAttribute('contenteditable')==='true'){inside=true;break;}node=node.parentElement;}
+  if(!inside)return;
+  const r=sel.getRangeAt(0).getBoundingClientRect();
+  boldBar.style.left=Math.max(8,r.left+r.width/2-52)+'px';
+  boldBar.style.top=(r.top+window.scrollY-46)+'px';
+  boldBar.classList.add('visible');
+  btnBold.classList.toggle('on',document.queryCommandState('bold'));
+  btnItalic.classList.toggle('on',document.queryCommandState('italic'));
+}
+document.addEventListener('mouseup',function(e){if(!editMode)return;if(boldBar.contains(e.target))return;setTimeout(showBar,20);});
+document.addEventListener('selectionchange',function(){
+  if(!editMode){hideBar();return;}
+  if(barPinned)return;
+  const sel=window.getSelection();
+  if(!sel||sel.isCollapsed||!sel.toString().trim())hideBar();
+});
+boldBar.addEventListener('mouseenter',()=>{barPinned=true;});
+boldBar.addEventListener('mouseleave',()=>{barPinned=false;});
+btnBold.addEventListener('mousedown',function(e){e.preventDefault();document.execCommand('bold');btnBold.classList.toggle('on',document.queryCommandState('bold'));});
+btnItalic.addEventListener('mousedown',function(e){e.preventDefault();document.execCommand('italic');btnItalic.classList.toggle('on',document.queryCommandState('italic'));});
+
+// ── PWA Service Worker registrieren ──────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js');
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
